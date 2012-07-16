@@ -84,7 +84,7 @@ void showImages(vector<string>& files, const string windowName){
 
 
 //returns value between 0 and 255 of pixel at image position (x,y)
-unsigned char getPixel(IplImage* image, int x, int y){
+unsigned char getPixel(const IplImage* image, int x, int y){
   return ((unsigned char*)(image->imageData + image->widthStep*y))[x*image->nChannels];
 }
 

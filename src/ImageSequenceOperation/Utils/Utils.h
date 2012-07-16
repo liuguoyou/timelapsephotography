@@ -35,7 +35,7 @@ void showImages(vector<string>& files, const string windowName);
  *		image: source image to be computed
  *		x, y: position
  */
-unsigned char getPixel(IplImage* image, int x, int y);
+unsigned char getPixel(const IplImage* image, int x, int y);
 
 /** Function setPixel(IplImage* image, int x, int y, unsigned char value)
  *		sets pixel at image position (x,y)

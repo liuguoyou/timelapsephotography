@@ -49,6 +49,7 @@ void createBitmaps(const IplImage *srcImage, IplImage* &mtb, IplImage* &eb){
 /**
  * Implementation of Function convertIplImageToBitmap(IplImage* pIpl, BYTE* &pBmp, DWORD& size)
  */
+/*
 void convertIplImageToBitmap(IplImage* pIpl, BYTE* &pBmp, DWORD& size){
 	BITMAPFILEHEADER bfh = {0};
     DWORD dwImageSize = 0;
@@ -89,10 +90,70 @@ void convertIplImageToBitmap(IplImage* pIpl, BYTE* &pBmp, DWORD& size){
     memcpy(p, (BYTE*)pIpl->imageData, dwImageSize);
 
 }
-
+*/
 /**
  * Implementation of Function void shrinkImage2(IplImage* sourceImage, IplImage* &nextLevel)
  */
 void shrinkImage2(IplImage* sourceImage, IplImage* &nextLevel){
 	cvPyrDown(sourceImage, nextLevel,CV_GAUSSIAN_5x5);
+}
+
+/**
+ * Implementation of Function shiftBitMap(const IplImage* srcImage, int xOffset, int yOffset, IplImage* &result)
+ */
+void shiftBitMap(const IplImage* srcImage, int xOffset, int yOffset, IplImage* &result){
+	int i, j;
+
+	if(xOffset >= 0 && yOffset >= 0){
+		for(i = 0; i < srcImage->height - yOffset; i++)
+			for(j = 0; j < srcImage->width - xOffset; j++)
+				cvSet2D(result, i + yOffset, j + xOffset, cvGet2D(srcImage, i, j));
+	}
+
+	if(xOffset >= 0 && yOffset < 0){
+		for(i = abs(yOffset); i < srcImage->height; i++)
+			for(j = 0; j < srcImage->width - xOffset; j++)
+				cvSet2D(result, i - abs(yOffset), j + xOffset, cvGet2D(srcImage, i, j));		
+	}
+
+	if(xOffset < 0 && yOffset >= 0){
+		for(i = 0; i < srcImage->height - yOffset; i++)
+			for(j = abs(xOffset); j < srcImage->width; j++)
+				cvSet2D(result, i + yOffset, j - abs(xOffset), cvGet2D(srcImage, i, j));			
+	}
+
+	if(xOffset < 0 && yOffset < 0){
+		for(i = abs(yOffset); i < srcImage->height; i++)
+			for(j = abs(xOffset); j < srcImage->width; j++)
+				cvSet2D(result, i - abs(yOffset), j - abs(xOffset), cvGet2D(srcImage, i, j));
+	}
+}
+
+/**
+ * Implementation of Function  xorBitMap(const IplImage* srcImage1, const IplImage* srcImage2, IplImage* &result)
+ */
+void xorBitMap(const IplImage* srcImage1, const IplImage* srcImage2, IplImage* &result){
+	int i, j;
+
+	IplImage* tempImg1 = cvCreateImage(cvGetSize(srcImage1), srcImage1->depth, srcImage1->nChannels);
+	IplImage* tempImg2 = cvCreateImage(cvGetSize(srcImage2), srcImage2->depth, srcImage2->nChannels);
+
+	for(i = 0; i < srcImage1->width; i++)
+		for(j = 0; j < srcImage1->height; j++)
+			if(getPixel(srcImage1, i, j) != 0)
+				setPixel(tempImg1, i, j, 1);
+
+	for(i = 0; i < srcImage2->width; i++)
+		for(j = 0; j < srcImage2->height; j++)
+			if(getPixel(srcImage2, i, j) != 0)
+				setPixel(tempImg2, i, j, 1);
+	
+	cvXor(tempImg1, tempImg2, result, 0);
+}
+
+/**
+ * Implementation of Function totalOneInBitMap(const IplImage* srcImage)
+ */
+int totalOneInBitMap(const IplImage* srcImage){
+	return cvCountNonZero(srcImage);
 }
