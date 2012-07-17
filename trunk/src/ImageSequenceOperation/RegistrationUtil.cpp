@@ -91,10 +91,11 @@ void convertIplImageToBitmap(IplImage* pIpl, BYTE* &pBmp, DWORD& size){
 
 }
 */
+
 /**
  * Implementation of Function void shrinkImage2(IplImage* sourceImage, IplImage* &nextLevel)
  */
-void shrinkImage2(IplImage* sourceImage, IplImage* &nextLevel){
+void shrinkImage2(const IplImage* sourceImage, IplImage* &nextLevel){
 	cvPyrDown(sourceImage, nextLevel,CV_GAUSSIAN_5x5);
 }
 
@@ -149,6 +150,28 @@ void xorBitMap(const IplImage* srcImage1, const IplImage* srcImage2, IplImage* &
 				setPixel(tempImg2, i, j, 1);
 	
 	cvXor(tempImg1, tempImg2, result, 0);
+}
+
+/**
+ * Implementation of Function andBitMap(const IplImage* srcImage1, const IplImage* srcImage2, IplImage* &result)
+ */
+void andBitMap(const IplImage* srcImage1, const IplImage* srcImage2, IplImage* &result){
+	int i, j;
+
+	IplImage* tempImg1 = cvCreateImage(cvGetSize(srcImage1), srcImage1->depth, srcImage1->nChannels);
+	IplImage* tempImg2 = cvCreateImage(cvGetSize(srcImage2), srcImage2->depth, srcImage2->nChannels);
+
+	for(i = 0; i < srcImage1->width; i++)
+		for(j = 0; j < srcImage1->height; j++)
+			if(getPixel(srcImage1, i, j) != 0)
+				setPixel(tempImg1, i, j, 1);
+
+	for(i = 0; i < srcImage2->width; i++)
+		for(j = 0; j < srcImage2->height; j++)
+			if(getPixel(srcImage2, i, j) != 0)
+				setPixel(tempImg2, i, j, 1);
+	
+	cvAnd(tempImg1, tempImg2, result, 0);
 }
 
 /**

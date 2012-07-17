@@ -23,7 +23,8 @@ using namespace cv;
  */
 void createBitmaps(const IplImage* img, IplImage* &mtb, IplImage* &eb);
 
-/**
+/** 
+ * FOR BACKUP
  * Function convertIplImageToBitmap(IplImage* pIpl, BYTE* &pBmp, DWORD& size)
  *		Convert ImlImage file format to bitmap (BMP) format
  * Parameters:
@@ -40,7 +41,7 @@ void createBitmaps(const IplImage* img, IplImage* &mtb, IplImage* &eb);
  *		sourceImage: the original image to be processed
  *		nextLevel: the shrunk image whose size is a quarter of the source image
  */
-void shrinkImage2(IplImage* sourceImage, IplImage* &nextLevel);
+void shrinkImage2(const IplImage* sourceImage, IplImage* &nextLevel);
 
 /**
  * Function shiftBitMap(const IplImage* srcImage, int xOffset, int yOffset, IplImage* &result)
@@ -60,6 +61,15 @@ void shiftBitMap(const IplImage* srcImage, int xOffset, int yOffset, IplImage* &
  *		result: image storing the XOR result
  */
 void xorBitMap(const IplImage* srcImage1, const IplImage* srcImage2, IplImage* &result);
+
+/**
+ * Function  andBitMap(const IplImage* srcImage1, const IplImage* srcImage2, IplImage* &result)
+ *		Compute the AND value result of two images.
+ * Parameters:
+ *		sourceImage 1, 2: the original images to be processed
+ *		result: image storing the AND result
+ */
+void andBitMap(const IplImage* srcImage1, const IplImage* srcImage2, IplImage* &result);
 
 /**
  * Function  totalOneInBitMap(const IplImage* srcImage)
