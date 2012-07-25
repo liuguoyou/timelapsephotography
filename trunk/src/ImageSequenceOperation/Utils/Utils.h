@@ -19,7 +19,7 @@ using namespace cv;
  *		path: the directory path to be searched
  *		files: the vector that used to store file names with directory path
  */
-void getFileNames(string path, vector<string>& files);
+void getFileNames(string path, vector<string>& entireNames, vector<string>& fileNames);
 
 /** Function showImages(vector<string>& files, const string windowName)
  *		With file names stored in the vector, overlap them each to show in a name - specified window.
