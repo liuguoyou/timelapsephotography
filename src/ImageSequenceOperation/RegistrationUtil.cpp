@@ -8,6 +8,13 @@
 void createBitmaps(const IplImage *srcImage, IplImage* &mtb, IplImage* &eb){
 
 	IplImage* gray_plane = cvCreateImage(cvGetSize(srcImage),8,1);
+	cvCvtColor(srcImage, gray_plane, CV_BGR2GRAY);  
+
+	/*
+	cvNamedWindow("gray", 1); 
+	cvShowImage("gray", gray_plane);
+	cvWaitKey(0);
+	*/
 
 	int i, j;
 
@@ -35,6 +42,12 @@ void createBitmaps(const IplImage *srcImage, IplImage* &mtb, IplImage* &eb){
 				setPixel(mtb, i, j, 0);
 			else
 				setPixel(mtb, i, j, 255);
+
+	/*
+	cvNamedWindow( "mtb", 1 ); 
+	cvShowImage("mtb", mtb);
+	cvWaitKey(0);
+	*/
 
 	//Create exclusion bitmap
 	for(i = 0; i < width; i++)
@@ -148,8 +161,14 @@ void xorBitMap(const IplImage* srcImage1, const IplImage* srcImage2, IplImage* &
 		for(j = 0; j < srcImage2->height; j++)
 			if(getPixel(srcImage2, i, j) != 0)
 				setPixel(tempImg2, i, j, 1);
-	
-	cvXor(tempImg1, tempImg2, result, 0);
+
+	for(i = 0; i < srcImage2->width; i++)
+		for(j = 0; j < srcImage2->height; j++)
+			if(getPixel(tempImg1, i, j) ^ getPixel(tempImg2, i, j))
+				setPixel(result, i, j, 255);
+			else
+				setPixel(result, i, j, 0);
+	//cvXor(tempImg1, tempImg2, result, 0);
 }
 
 /**
@@ -170,13 +189,29 @@ void andBitMap(const IplImage* srcImage1, const IplImage* srcImage2, IplImage* &
 		for(j = 0; j < srcImage2->height; j++)
 			if(getPixel(srcImage2, i, j) != 0)
 				setPixel(tempImg2, i, j, 1);
+
+
+	for(i = 0; i < srcImage2->width; i++)
+		for(j = 0; j < srcImage2->height; j++)
+			if(getPixel(tempImg1, i, j) == getPixel(tempImg2, i, j))
+				setPixel(result, i, j, 255);
+			else
+				setPixel(result, i, j, 0);
 	
-	cvAnd(tempImg1, tempImg2, result, 0);
+	//cvAnd(tempImg1, tempImg2, result, 0);
 }
 
 /**
  * Implementation of Function totalOneInBitMap(const IplImage* srcImage)
  */
 int totalOneInBitMap(const IplImage* srcImage){
-	return cvCountNonZero(srcImage);
+	int i,j;
+	int totalOnes = 0;
+
+	for(i = 0; i < srcImage->width; i++)
+		for(j = 0; j < srcImage->height; j++)
+			if(getPixel(srcImage, i, j) != 0)
+				totalOnes++;
+
+	return totalOnes;
 }

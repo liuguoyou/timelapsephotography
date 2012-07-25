@@ -8,7 +8,7 @@
  * Implementation of Function 
  *		getFileNames(string path, vector<string>& files)
  */
-void getFileNames(string path, vector<string>& files){
+void getFileNames(string path, vector<string>& entireNames, vector<string>& fileNames){
 	//File handle
     long   hFile   =   0;
 
@@ -21,10 +21,11 @@ void getFileNames(string path, vector<string>& files){
             //If it is a directory, go in iteration, otherwise, add to list
             if((fileinfo.attrib & _A_SUBDIR)){
                 if(strcmp(fileinfo.name,".") != 0 && strcmp(fileinfo.name,"..") != 0)
-                    getFileNames( p.assign(path).append("/").append(fileinfo.name), files );
+                    getFileNames( p.assign(path).append("/").append(fileinfo.name), entireNames, fileNames);
             }
             else{
-                files.push_back(p.assign(path).append("/").append(fileinfo.name));
+                entireNames.push_back(p.assign(path).append("/").append(fileinfo.name));
+				fileNames.push_back(fileinfo.name);
             }
         }   while(_findnext(hFile, &fileinfo) == 0);
 
@@ -71,7 +72,7 @@ void showImages(vector<string>& files, const string windowName){
 
 		beta = ( 1.0 - alpha );
 
-		addWeighted( src1, alpha, src2, beta, 0.0, dst);
+		addWeighted(src1, alpha, src2, beta, 0.0, dst);
 	
 		//Print to check peocess
 		cout << "File " << ++index <<" is emerged to destnation"<< endl;
@@ -79,7 +80,7 @@ void showImages(vector<string>& files, const string windowName){
 	}
 	imshow(windowName, dst);
 
-	waitKey(0);
+	//waitKey(0);
 }
 
 
