@@ -1,7 +1,6 @@
 #include "Utils/RegistrationUtil.h"
 #include "Utils/Utils.h"
 
-
 /**
  * Implementation of Function createBitmaps(const IplImage *img, BYTE *tb, BYTE *eb)
  */
@@ -52,58 +51,12 @@ void createBitmaps(const IplImage *srcImage, IplImage* &mtb, IplImage* &eb){
 	//Create exclusion bitmap
 	for(i = 0; i < width; i++)
 		for(j = 0; j < height; j++)
-			if(abs(getPixel(gray_plane, i, j) - medianValue) <= 4)
+			if(abs(getPixel(gray_plane, i, j) - medianValue) <= 6)
 				setPixel(eb, i, j, 0);
 			else
 				setPixel(eb, i, j, 255);
 
 }
-
-/**
- * Implementation of Function convertIplImageToBitmap(IplImage* pIpl, BYTE* &pBmp, DWORD& size)
- */
-/*
-void convertIplImageToBitmap(IplImage* pIpl, BYTE* &pBmp, DWORD& size){
-	BITMAPFILEHEADER bfh = {0};
-    DWORD dwImageSize = 0;
-    DWORD dwBytesRead = 0;
-    
-    int w = pIpl->width;
-    int l = ((w * 24 +31) & ~31) /8;
-    int h = pIpl->height;
-    dwImageSize    = l * h;
-    
-	//Definition of file class
-    bfh.bfType        = (WORD)'M' << 8 | 'B';
-	//Definition of header file size
-    bfh.bfOffBits    = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
-	//File size
-    bfh.bfSize        = bfh.bfOffBits + dwImageSize;
-    
-    BITMAPINFOHEADER  bih = {0};
-    bih.biSize = sizeof(BITMAPINFOHEADER);
-    bih.biWidth = pIpl->width;
-    bih.biHeight = pIpl->height;
-    bih.biPlanes = 1;
-    bih.biBitCount = 24;
-    bih.biCompression = BI_RGB;
-    bih.biSizeImage    = 0;
-    bih.biXPelsPerMeter    = 0;
-    bih.biYPelsPerMeter    = 0;
-    bih.biClrUsed = 0;
-    bih.biClrImportant = 0;
-    
-    size = bfh.bfSize;
-    pBmp = new BYTE[bfh.bfSize+1];
-    
-    memset(pBmp, 0, bfh.bfSize + 1);
-    memcpy(pBmp, &bfh, sizeof(BITMAPFILEHEADER));
-    memcpy(pBmp+sizeof(BITMAPFILEHEADER), &bih, sizeof(BITMAPINFOHEADER));
-    BYTE* p = pBmp+sizeof(BITMAPFILEHEADER)+sizeof(BITMAPINFOHEADER);
-    memcpy(p, (BYTE*)pIpl->imageData, dwImageSize);
-
-}
-*/
 
 /**
  * Implementation of Function void shrinkImage2(IplImage* sourceImage, IplImage* &nextLevel)
@@ -214,4 +167,125 @@ int totalOneInBitMap(const IplImage* srcImage){
 				totalOnes++;
 
 	return totalOnes;
+}
+
+/**
+ * Implementation of Function getExpShift(const IplImage * srcImage1, const IplImage * srcImage2, int shiftBits, int shiftRet[])
+ */
+void getExpShift(const IplImage * srcImage1, const IplImage * srcImage2, int shiftBits, int shiftRet[]){
+	int minErr;
+	int curShift[2];
+
+	IplImage *tb1 = cvCreateImage(cvGetSize(srcImage1), 8, 1);
+	IplImage *tb2 = cvCreateImage(cvGetSize(srcImage2), 8, 1);
+	IplImage *eb1 = cvCreateImage(cvGetSize(srcImage1), 8, 1);
+	IplImage *eb2 = cvCreateImage(cvGetSize(srcImage2), 8, 1);
+
+	int i, j;
+
+	if(shiftBits > 0){
+		IplImage *sm1Img1 = cvCreateImage(cvSize(srcImage1->width/2, srcImage1->height/2), srcImage1->depth, srcImage1->nChannels);
+		IplImage *sm1Img2 = cvCreateImage(cvSize(srcImage2->width/2, srcImage2->height/2), srcImage2->depth, srcImage2->nChannels);
+
+		shrinkImage2(srcImage1, sm1Img1);
+		shrinkImage2(srcImage2, sm1Img2);
+
+		getExpShift(sm1Img1, sm1Img2, shiftBits - 1, curShift);
+
+		cvReleaseImage(&sm1Img1);
+		cvReleaseImage(&sm1Img2);
+
+		shiftRet[0] = curShift[0] * 2;
+		shiftRet[1] = curShift[1] * 2;
+	} else {
+		curShift[0] = curShift[1] = 0;
+
+		createBitmaps(srcImage1, tb1, eb1);
+		createBitmaps(srcImage2, tb2, eb2);
+		/*
+		cvNamedWindow( "TB1", 1 ); 
+		cvShowImage("TB1", tb1);
+		cvWaitKey(0);
+
+		cvNamedWindow( "EB1", 1 ); 
+		cvShowImage("EB1", eb1);
+		cvWaitKey(0);
+		*/
+		minErr = srcImage1->width * srcImage1->height;
+
+		for(i = -1; i < 1; i++)
+			for(j = -1; j < 1; j++) {
+				int xOffset = curShift[0] + i;
+				int yOffset = curShift[1] + j;
+
+				IplImage * shiftedTB2 = cvCreateImage(cvGetSize(srcImage2), 8, 1);
+				IplImage * shiftedEB2 = cvCreateImage(cvGetSize(srcImage2), 8, 1);
+				IplImage * diffBMP = cvCreateImage(cvGetSize(srcImage2), 8, 1);
+
+				int err;
+
+				shiftBitMap(tb2, xOffset, yOffset, shiftedTB2);
+				shiftBitMap(eb2, xOffset, yOffset, shiftedEB2);
+				/*
+				cvNamedWindow( "ShiftedEB2", 1 ); 
+				cvShowImage("ShiftedEB2", shiftedEB2);
+				cvWaitKey(0);
+				*/
+				xorBitMap(tb1, shiftedTB2, diffBMP);
+				
+				/*
+				cvNamedWindow( "tb1", 1 ); 
+				cvShowImage("tb1", tb1);
+				cvWaitKey(0);
+
+				cvNamedWindow( "shiftedTB2", 1 ); 
+				cvShowImage("shiftedTB2", shiftedTB2);
+				cvWaitKey(0);
+
+				cvNamedWindow( "diffBMP_XOR", 1 ); 
+				cvShowImage("diffBMP_XOR", diffBMP);
+				cvWaitKey(0);
+
+				*/
+				
+				andBitMap(diffBMP, eb1, diffBMP);
+
+				/*
+				cvNamedWindow( "eb1", 1 ); 
+				cvShowImage("eb1", eb1);
+				cvWaitKey(0);
+				
+				cvNamedWindow( "diffBMP_AND", 1 ); 
+				cvShowImage("diffBMP_AND", diffBMP);
+				cvWaitKey(0);
+				*/
+				
+				andBitMap(diffBMP, shiftedEB2, diffBMP);
+
+				/*
+				cvNamedWindow( "shiftedEB2", 1 ); 
+				cvShowImage("shiftedEB2", shiftedEB2);
+				cvWaitKey(0);
+				
+				cvNamedWindow( "diffBMP_AND2", 1 ); 
+				cvShowImage("diffBMP_AND2", diffBMP);
+				cvWaitKey(0);
+				*/
+
+				err = totalOneInBitMap(diffBMP);
+
+				if(err < minErr) {
+					shiftRet[0] = xOffset;
+					shiftRet[1] = yOffset;
+					minErr = err;
+				}
+				cvReleaseImage(&shiftedTB2);
+				cvReleaseImage(&shiftedEB2);
+			}
+
+			cvReleaseImage(&tb1);
+			cvReleaseImage(&tb2);
+			cvReleaseImage(&eb1);
+			cvReleaseImage(&eb2);
+	}
 }
