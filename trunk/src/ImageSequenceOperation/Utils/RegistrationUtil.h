@@ -23,17 +23,6 @@ using namespace cv;
  */
 void createBitmaps(const IplImage* img, IplImage* &mtb, IplImage* &eb);
 
-/** 
- * FOR BACKUP
- * Function convertIplImageToBitmap(IplImage* pIpl, BYTE* &pBmp, DWORD& size)
- *		Convert ImlImage file format to bitmap (BMP) format
- * Parameters:
- *		pIpl: the original image to be processed
- *		pBmp: a bitmap storing converted data
- *		eb: exclusion bitmap converted from IplImage
- */
-//void convertIplImageToBitmap(IplImage* pIpl, BYTE* &pBmp, DWORD& size);
-
 /**
  * Function shrinkImage2(IplImage* sourceImage, IplImage* &nextLevel)
  *		Shink an image by factor of 2, a quater of the original size
@@ -80,3 +69,14 @@ void andBitMap(const IplImage* srcImage1, const IplImage* srcImage2, IplImage* &
  *		Numbers of one in an image.
  */
 int totalOneInBitMap(const IplImage* srcImage);
+
+/**
+ * Function  getExpShift(const IplImage * srcImage1, const IplImage * srcImage2, int shiftBits, int shiftRet[])
+ *		find shift in X and Y directions, for an image, with one reference, shiftBits is specified to control the pyramid level
+ * Parameters:
+ *		srcImage1: the reference image
+ *		srcImage2: the image to be computed
+ *		shiftBits: an integer to control pyramid level
+ *		shiftRet[]: array contains two integers that denote shifts in X and Y directions
+ */
+void getExpShift(const IplImage * srcImage1, const IplImage * srcImage2, int shiftBits, int shiftRet[]);
