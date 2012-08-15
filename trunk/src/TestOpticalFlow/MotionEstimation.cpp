@@ -5,9 +5,9 @@
 #include <math.h>
 
 #define BLOCKSIZE 8
-#define SEARCHRANGE 16
-#define BLOCKNUM 32400
-#define MAXDISTANCETHRESHOLD 12.0000
+#define SEARCHRANGE 8
+#define MAXDISTANCETHRESHOLD 1
+#define PYRAMIDLEVEL 0
 
 struct blockMotionVector{
 	int x;
@@ -90,6 +90,28 @@ inline static void allocateOnDemand( IplImage **img, CvSize size, int depth, int
 }
 
 
+/**
+ * Implementation of Function void shrinkImage2(IplImage* sourceImage, IplImage* &nextLevel)
+ */
+void shrinkImage(const IplImage * srcImage, IplImage ** dstImage, int downwardLevel){
+	if(downwardLevel == 0) return;
+
+	IplImage * tempImage = NULL;
+
+	allocateOnDemand(&tempImage, cvSize(srcImage->width / 2, srcImage->height / 2), srcImage->depth, srcImage->nChannels);
+
+	cvPyrDown(srcImage, tempImage, CV_GAUSSIAN_5x5);
+
+	if(downwardLevel == 1){	
+		//allocateOnDemand(dstImage, cvGetSize(tempImage), tempImage->depth, tempImage->nChannels);
+		*dstImage = cvCloneImage(tempImage);
+		cvReleaseImage(&tempImage);
+	} else{
+		downwardLevel--;
+		shrinkImage(tempImage, dstImage, downwardLevel);
+	}
+}
+
 
 void getBlockShift(IplImage * referenceFrame, IplImage * currentFrame, BlockMotionVectorPtr *headPtr, BlockMotionVectorPtr *tailPtr){
 	int imageWidth = referenceFrame->width;
@@ -105,8 +127,10 @@ void getBlockShift(IplImage * referenceFrame, IplImage * currentFrame, BlockMoti
 	double squareSumMatrix[SEARCHRANGE * SEARCHRANGE] = {10000.0000};
 	int matrixIndex = 0;
 
-	for(imageIndexX = 0; imageIndexX < imageWidth - BLOCKSIZE; imageIndexX += BLOCKSIZE)
-		for(imageIndexY = 0; imageIndexY < imageHeight - BLOCKSIZE; imageIndexY += BLOCKSIZE){
+
+	//calculation loop, adjust here for pixelwise or blockwise
+	for(imageIndexX = 0; imageIndexX < imageWidth - BLOCKSIZE; imageIndexX++)
+		for(imageIndexY = 0; imageIndexY < imageHeight - BLOCKSIZE; imageIndexY++){
 
 			//smallestSquareSum = 10000.0000;
 			smallestShifts[0] = 0;
@@ -166,8 +190,8 @@ double shiftedDistance(int shiftedX, int shiftedY){
 }
 
 void fillBlock(IplImage ** image, int beginPositionX, int beginPositionY, int colorValue){
-	for(int i = beginPositionX; i < beginPositionX + BLOCKSIZE; i++)
-		for(int j = beginPositionY; j < beginPositionY + BLOCKSIZE; j++)
+	for(int i = beginPositionX; i < beginPositionX + BLOCKSIZE * (pow(2.0, PYRAMIDLEVEL)); i++)
+		for(int j = beginPositionY; j < beginPositionY + BLOCKSIZE * (pow(2.0, PYRAMIDLEVEL)); j++)
 			setPixel(*image, i, j, colorValue);
 }
 
@@ -180,9 +204,9 @@ void segmentImage(IplImage ** newImage, BlockMotionVectorPtr motionVectorQueueNo
 	} else{
 		while(motionVectorQueueNode != NULL){
 			if(shiftedDistance(motionVectorQueueNode->shiftX, motionVectorQueueNode->shiftY) >= MAXDISTANCETHRESHOLD){
-				fillBlock(newImage, motionVectorQueueNode->x, motionVectorQueueNode->y, 255);
+				fillBlock(newImage, motionVectorQueueNode->x * (pow(2.0, PYRAMIDLEVEL)), motionVectorQueueNode->y * (pow(2.0, PYRAMIDLEVEL)), 255);
 			} else{
-				fillBlock(newImage, motionVectorQueueNode->x, motionVectorQueueNode->y, 0);
+				fillBlock(newImage, motionVectorQueueNode->x * (pow(2.0, PYRAMIDLEVEL)), motionVectorQueueNode->y * (pow(2.0, PYRAMIDLEVEL)), 0);
 			}
 			motionVectorQueueNode = motionVectorQueueNode->nextPtr;
 		}
@@ -190,11 +214,28 @@ void segmentImage(IplImage ** newImage, BlockMotionVectorPtr motionVectorQueueNo
 }
 
 
+void printMotionVectors(BlockMotionVectorPtr motionVectorQueueNode){
+	if(motionVectorQueueNode == NULL){
+		fprintf(stderr, "Error: Motion Vector Queue is empty\n");
+		exit(-1);
+	} else{
+		while(motionVectorQueueNode != NULL){
+			if(motionVectorQueueNode->shiftX != 0 || motionVectorQueueNode->shiftY !=0){
+				printf("p: %d, %d;  (%d, %d)\n", motionVectorQueueNode->x, motionVectorQueueNode->y, motionVectorQueueNode->shiftX != 0, motionVectorQueueNode->shiftY);
+			}
+			motionVectorQueueNode = motionVectorQueueNode->nextPtr;
+		}
+	}
+
+}
+
+
+
 int main(void){
 
 	//Read images
-	IplImage * refFrame = cvLoadImage("images/test/P1030701.jpg");
-	IplImage * curFrame = cvLoadImage("images/test/P1030702.jpg");
+	IplImage * refFrame = cvLoadImage("images/test/P1030710.jpg");
+	IplImage * curFrame = cvLoadImage("images/test/P1030711.jpg");
 
 	BlockMotionVectorPtr headMotionVectorPtr = NULL;
 	BlockMotionVectorPtr tailMotionVectorPtr = NULL;
@@ -206,7 +247,8 @@ int main(void){
 	*/
 	//Covert to grayscale images
 	
-	IplImage * refGrayPlane = NULL, * curGrayPlane = NULL, *segmentedImage = NULL;
+	IplImage * refGrayPlane = NULL, * curGrayPlane = NULL, *segmentedImage = NULL,
+			 * shrunkrefPlane = NULL, * shrunkcurPlane = NULL;
 
 	allocateOnDemand(&refGrayPlane, cvGetSize(refFrame), IPL_DEPTH_8U, 1);
 	cvCvtColor(refFrame, refGrayPlane, CV_BGR2GRAY);
@@ -217,8 +259,21 @@ int main(void){
 	allocateOnDemand(&segmentedImage, cvGetSize(curFrame), IPL_DEPTH_8U, 1);
 	//cvCvtColor(curFrame, curGrayPlane, CV_BGR2GRAY);
 
+	//shrinkImage(refGrayPlane, &shrunkrefPlane, PYRAMIDLEVEL);
+	//shrinkImage(curGrayPlane, &shrunkcurPlane, PYRAMIDLEVEL);
+	/*
+	shrinkImage(refGrayPlane, &shrunkImage, 2);
+	cvNamedWindow("ShunkImage", 1); 
+	cvShowImage("ShunkImage", shrunkImage);
+	cvWaitKey(0);
 
+	*/
 	getBlockShift(refGrayPlane, curGrayPlane, &headMotionVectorPtr, &tailMotionVectorPtr);
+	//getBlockShift(shrunkrefPlane, shrunkcurPlane, &headMotionVectorPtr, &tailMotionVectorPtr);
+
+	
+	printMotionVectors(headMotionVectorPtr);
+
 
 	segmentImage(&segmentedImage, headMotionVectorPtr);
 
@@ -231,7 +286,10 @@ int main(void){
 	cvReleaseImage(&curFrame);
 	cvReleaseImage(&refGrayPlane);
 	cvReleaseImage(&curGrayPlane);
+	cvReleaseImage(&shrunkrefPlane);
+	cvReleaseImage(&shrunkcurPlane);
 	cvReleaseImage(&segmentedImage);
+
 
 	return 0;
 }
