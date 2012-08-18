@@ -4,11 +4,16 @@
 #include <highgui.h>
 #include <math.h>
 
+/*******************************************
+ * defines
+ *******************************************/
 #define BLOCKSIZE 8
 #define SEARCHRANGE 16
-//#define MAXDISTANCETHRESHOLD 3.75
-#define PYRAMIDLEVEL 0
+#define PYRAMIDLEVEL 1
 
+/*******************************************
+ * struct definition
+ *******************************************/
 struct blockMotionVector{
 	int x;
 	int y;
@@ -17,15 +22,40 @@ struct blockMotionVector{
 	struct blockMotionVector *nextPtr;
 };
 
+struct distanceFrequencyNode{
+	double distance;
+	long frequency;
+	struct distanceFrequencyNode *nextPtr;
+};
+
+
+/*******************************************
+ * typedef
+ *******************************************/
 typedef struct blockMotionVector BlockMotionVector;
 typedef BlockMotionVector *BlockMotionVectorPtr;
 
+typedef struct distanceFrequencyNode DistanceFrequencyNode;
+typedef DistanceFrequencyNode *DistanceFrequencyNodePtr;
 
 
-int isQueueEmpty(BlockMotionVectorPtr headPtr){
+/** Function isQueueEmpty(BlockMotionVectorPtr headPtr)
+ *		To judge if the queue is empty
+ *	Return:
+ *		if ture, return 1, otherwise, 0
+ */
+int isMotionVectorQueueEmpty(BlockMotionVectorPtr headPtr){
 	return headPtr == NULL;
 }
 
+/** Function enqueueMotionVectors(BlockMotionVectorPtr *headPtr, BlockMotionVectorPtr *tailPtr, int x, int y, int shiftX, int shiftY)
+ *		To insert an new node to the end of the queue
+ *	Parameters:
+ *		headPtr: address of head node of the queue
+ *		tailPtr: address of head node of the queue
+ *		x, y: position information of the block, in current frame
+ *		shiftX, shiftY: shift information of the block, which is named motion vector
+ */
 void enqueueMotionVectors(BlockMotionVectorPtr *headPtr, BlockMotionVectorPtr *tailPtr,
 						  int x, int y, int shiftX, int shiftY){
 
@@ -39,7 +69,7 @@ void enqueueMotionVectors(BlockMotionVectorPtr *headPtr, BlockMotionVectorPtr *t
 		newVectorPtr->shiftY = shiftY;
 		newVectorPtr->nextPtr = NULL;
 
-		if(isQueueEmpty(*headPtr)){
+		if(isMotionVectorQueueEmpty(*headPtr)){
 			*headPtr = newVectorPtr;
 		} else {
 			(*tailPtr)->nextPtr = newVectorPtr;
@@ -53,40 +83,130 @@ void enqueueMotionVectors(BlockMotionVectorPtr *headPtr, BlockMotionVectorPtr *t
 
 }
 
+/** Function isDistanceFrequencyQueueEmpty(DistanceFrequencyNodePtr headPtr)
+ *		To judge if the queue is empty
+ *	Return:
+ *		if ture, return 1, otherwise, 0
+ */
+int isDistanceFrequencyQueueEmpty(DistanceFrequencyNodePtr headPtr){
+	return headPtr == NULL;
+}
 
-//static const double pi = 3.14159265358979323846;
 
-inline static double square(int a)
+void enqueueDistanceFrequency(DistanceFrequencyNodePtr *headPtr, DistanceFrequencyNodePtr *tailPtr, double distance){
+
+	if(isDistanceFrequencyQueueEmpty(*headPtr)){
+	//The first node to enter the queue
+		DistanceFrequencyNodePtr newDistancePtr;
+		newDistancePtr = (DistanceFrequencyNodePtr)malloc(sizeof(DistanceFrequencyNode));
+		
+		if(newDistancePtr != NULL){
+			newDistancePtr->distance = distance;
+			newDistancePtr->frequency = 1;
+			newDistancePtr->nextPtr = NULL;
+
+			*headPtr = newDistancePtr;
+			
+			*tailPtr = newDistancePtr;
+		} else{
+			fprintf(stderr, "Error: New Distance Frequency is not inserted, Out of memory?\n");
+			exit(-1);
+		}
+	} else{
+	//Not the first to enter the queue, compare from head, then consider insertion
+		DistanceFrequencyNodePtr tempPtr;
+		tempPtr = (DistanceFrequencyNodePtr)malloc(sizeof(DistanceFrequencyNode));
+		
+		if(tempPtr != NULL){
+			tempPtr = *headPtr;
+		} else{
+			fprintf(stderr, "Error: New Temp Distance Frequency is not inserted, Out of memory?\n");
+			exit(-1);
+		}
+
+		int isDistanceInQueue = 0;
+
+		while(tempPtr != NULL){
+			if(distance == tempPtr->distance){
+				tempPtr->frequency++;
+				isDistanceInQueue = 1;
+				break;
+			} else {
+				tempPtr = tempPtr->nextPtr;
+			}
+		}
+
+		if(!isDistanceInQueue){
+			DistanceFrequencyNodePtr newDistancePtr;
+			newDistancePtr = (DistanceFrequencyNodePtr)malloc(sizeof(DistanceFrequencyNode));
+			
+			if(newDistancePtr != NULL){
+				newDistancePtr->distance = distance;
+				newDistancePtr->frequency = 1;
+				newDistancePtr->nextPtr = NULL;
+
+				(*tailPtr)->nextPtr = newDistancePtr;
+				
+				*tailPtr = newDistancePtr;
+			} else{
+				fprintf(stderr, "Error: New Distance Frequency is not inserted, Out of memory?\n");
+				exit(-1);
+			}
+		}
+
+		//free(tempPtr);
+	}
+}
+
+/** Function square(int a)
+ *		To compute square value of integer a
+ *	Return:
+ *		double value of a^2
+ */
+double square(int a)
 {
 	return a * a;
 }
 
-//returns value between 0 and 255 of pixel at image position (x,y)
+/** Function getPixel(const IplImage* image, int x, int y)
+ *		returns value between 0 and 255 of pixel at image position (x,y)
+ *	Return:
+ *		grayvalue of pixel(x, y)
+ *	Used for testing in segmentation
+ */
 unsigned char getPixel(const IplImage* image, int x, int y){
   return ((unsigned char*)(image->imageData + image->widthStep * y))[x * image->nChannels];
 }
 
-//returns color value between 0 and 255 of pixel at image position (x,y), channel: 0 - blue, 1 - green, 2 - red
+/** Function getColorPixel(const IplImage* image, int x, int y, int colorChannel)
+ *		returns color value between 0 and 255 of pixel at image position (x,y), channel: 0 - blue, 1 - green, 2 - red
+ *	Return:
+ *		color value as per channel of pixel(x, y)
+ */
 unsigned char getColorPixel(const IplImage* image, int x, int y, int colorChannel){
   return ((unsigned char*)(image->imageData + image->widthStep * y))[x * image->nChannels + colorChannel];
 }
 
-
-//sets pixel at image position (x,y)
+/** Function setPixel(IplImage* image, int x, int y, unsigned char value)
+ *		sets pixel at image position (x,y), according to grayvalue
+ */
 void setPixel(IplImage* image, int x, int y, unsigned char value){
   ((unsigned char*)(image->imageData + image->widthStep * y))[x * image->nChannels] = value;
 }
 
+/** Function setColorPixel(IplImage* image, int x, int y, unsigned char value, int colorChannel)
+ *		sets pixel at image position (x,y), according to color channel and values, channel: 0 - blue, 1 - green, 2 - red
+ */
 void setColorPixel(IplImage* image, int x, int y, unsigned char value, int colorChannel){
   ((unsigned char*)(image->imageData + image->widthStep * y))[x * image->nChannels + colorChannel] = value;
 }
 
-/* This is just an inline that allocates images.  I did this to reduce clutter in the
- * actual computer vision algorithmic code.  Basically it allocates the requested image
- * unless that image is already non-NULL.  It always leaves a non-NULL image as-is even
- * if that image's size, depth, and/or channels are different than the request.
+/** Function allocateOnDemand( IplImage **img, CvSize size, int depth, int channels )
+ *		it allocates the requested image
+ *		unless that image is already non-NULL.  It always leaves a non-NULL image as-is even
+ *		if that image's size, depth, and/or channels are different than the request.
  */
-inline static void allocateOnDemand( IplImage **img, CvSize size, int depth, int channels )
+void allocateOnDemand( IplImage **img, CvSize size, int depth, int channels )
 {
 	if ( *img != NULL )	return;
 
@@ -99,8 +219,8 @@ inline static void allocateOnDemand( IplImage **img, CvSize size, int depth, int
 }
 
 
-/**
- * Implementation of Function void shrinkImage2(IplImage* sourceImage, IplImage* &nextLevel)
+/** Function shrinkImage(const IplImage * srcImage, IplImage ** dstImage, int downwardLevel)
+ *		Shrink image to form a image pyramid according to the level that defined at macro
  */
 void shrinkImage(const IplImage * srcImage, IplImage ** dstImage, int downwardLevel){
 	if(downwardLevel == 0) return;
@@ -121,7 +241,15 @@ void shrinkImage(const IplImage * srcImage, IplImage ** dstImage, int downwardLe
 	}
 }
 
-
+/** Function getBlockShift(IplImage * referenceFrame, IplImage * currentFrame, BlockMotionVectorPtr *headPtr, BlockMotionVectorPtr *tailPtr)
+ *		Main function of block matching algorithm that are used in motion estimation, block size is preprocessored, as well as search range
+ *		The final motion vector is stored as a node which is then insert to a queue
+ *  Parameters:
+ *		*referenceFrame: reference frame pointer, which points to the reference image, the previous one.
+ *		*currentFrame: current frame pointer, which points to the second image where motion has occured in contrast to the reference frame
+ *		*headPtr: head node address of the queue
+ *		*tailPtr: tail node address of the queue
+ */
 void getBlockShift(IplImage * referenceFrame, IplImage * currentFrame, BlockMotionVectorPtr *headPtr, BlockMotionVectorPtr *tailPtr){
 	int imageWidth = referenceFrame->width;
 	int imageHeight = referenceFrame->height;
@@ -193,18 +321,28 @@ void getBlockShift(IplImage * referenceFrame, IplImage * currentFrame, BlockMoti
 		}
 }
 
-
+/** Function shiftedDistance(int shiftedX, int shiftedY)
+ *		Compute the distance according to the coordinates (x, y)
+ *  Return:
+ *		A double value that denote distance
+ */
 double shiftedDistance(int shiftedX, int shiftedY){
 	return sqrt(double(square(shiftedX) + square(shiftedY)));
 }
 
+/** Function fillBlock(IplImage ** image, int beginPositionX, int beginPositionY, int colorValue)
+ *		Assistant function for segmentation, which is used for test the block matching algorithm
+ *		Fill gray value to a block according to the position in image
+ */
 void fillBlock(IplImage ** image, int beginPositionX, int beginPositionY, int colorValue){
 	for(int i = beginPositionX; i < beginPositionX + BLOCKSIZE * (pow(2.0, PYRAMIDLEVEL)); i++)
 		for(int j = beginPositionY; j < beginPositionY + BLOCKSIZE * (pow(2.0, PYRAMIDLEVEL)); j++)
 			setPixel(*image, i, j, colorValue);
 }
 
-
+/** Function segmentImage(IplImage ** newImage, BlockMotionVectorPtr motionVectorQueueNode, double threshold)
+ *		Segment image to two values(0 and 255) to see the first - stage effect of the block matching algorithm 
+ */
 void segmentImage(IplImage ** newImage, BlockMotionVectorPtr motionVectorQueueNode, double threshold){
 
 	if(motionVectorQueueNode == NULL){
@@ -222,7 +360,7 @@ void segmentImage(IplImage ** newImage, BlockMotionVectorPtr motionVectorQueueNo
 	}
 }
 
-
+/*
 void printMotionVectors(BlockMotionVectorPtr motionVectorQueueNode){
 	if(motionVectorQueueNode == NULL){
 		fprintf(stderr, "Error: Motion Vector Queue is empty\n");
@@ -237,7 +375,12 @@ void printMotionVectors(BlockMotionVectorPtr motionVectorQueueNode){
 	}
 
 }
+*/
 
+
+/** Function computeDistanceThreshold(BlockMotionVectorPtr motionVectorQueueNode)
+ *		First version: to calculate the mean value of all distance, which is the simplest method to find a distance threshold
+ */
 double computeDistanceThreshold(BlockMotionVectorPtr motionVectorQueueNode){
 	long count = 0;
 	double sum = 0;
@@ -259,7 +402,55 @@ double computeDistanceThreshold(BlockMotionVectorPtr motionVectorQueueNode){
 	}
 }
 
+/** Function computeDistanceThreshold(BlockMotionVectorPtr motionVectorQueueNode)
+ *		First version: to calculate the mean value of all distance, which is the simplest method to find a distance threshold
+ */
+double weightedMeanDistanceThreshold(BlockMotionVectorPtr motionVectorQueueNode, DistanceFrequencyNodePtr *headPtr, DistanceFrequencyNodePtr *tailPtr){
+	long count = 0;
+	double sum = 0;
 
+	if(motionVectorQueueNode == NULL){
+		fprintf(stderr, "Error: Motion Vector Queue is empty\n");
+		exit(-1);
+	} else{
+		while(motionVectorQueueNode != NULL){
+			if(motionVectorQueueNode->shiftX != 0 || motionVectorQueueNode->shiftY != 0){	
+				enqueueDistanceFrequency(headPtr, tailPtr, sqrt(square(motionVectorQueueNode->shiftX) + square(motionVectorQueueNode->shiftY)));
+			
+				count++;	
+			}
+			motionVectorQueueNode = motionVectorQueueNode->nextPtr;
+		}
+
+		DistanceFrequencyNodePtr tempPtr;
+		tempPtr = (DistanceFrequencyNodePtr)malloc(sizeof(DistanceFrequencyNode));
+
+		if(tempPtr != NULL){
+			tempPtr = *headPtr;
+		} else{
+			fprintf(stderr, "Error: New Temp Distance Frequency is not inserted, Out of memory?\n");
+			exit(-1);
+		}
+
+		while(tempPtr != NULL){
+
+			sum += tempPtr->distance * tempPtr->frequency;
+
+			tempPtr = tempPtr->nextPtr;
+		}
+
+		//free(tempPtr);
+
+		return sum / count;
+	}
+}
+
+
+
+/** Function fillBackGroundBlock(IplImage ** newFrame, IplImage * refFrame, IplImage * curFrame, int beginPositionX, int beginPositionY)
+ *		Assistant function for creation of the new image
+ *		Pixels in background for is calculated as an average of two frames
+ */
 void fillBackGroundBlock(IplImage ** newFrame, IplImage * refFrame, IplImage * curFrame, int beginPositionX, int beginPositionY){
 	for(int i = beginPositionX; i < beginPositionX + BLOCKSIZE * (pow(2.0, PYRAMIDLEVEL)); i++)
 		for(int j = beginPositionY; j < beginPositionY + BLOCKSIZE * (pow(2.0, PYRAMIDLEVEL)); j++){
@@ -269,19 +460,25 @@ void fillBackGroundBlock(IplImage ** newFrame, IplImage * refFrame, IplImage * c
 		}		
 }
 
-
+/** Function fillMotionBlock(IplImage ** newFrame, IplImage * curFrame, int beginPositionX, int beginPositionY, int shiftX, int shiftY)
+ *		Assistant function for creation of the new image
+ *		Pixels in motion area is copy from current frame, with shifted half value by motion vector.
+ */
 void fillMotionBlock(IplImage ** newFrame, IplImage * curFrame, int beginPositionX, int beginPositionY, int shiftX, int shiftY){
 	for(int i = beginPositionX; i < beginPositionX + BLOCKSIZE * (pow(2.0, PYRAMIDLEVEL)); i++)
 		for(int j = beginPositionY; j < beginPositionY + BLOCKSIZE * (pow(2.0, PYRAMIDLEVEL)); j++){
 
 			if(i - shiftX >= 0 && j - shiftY >= 0 && i + shiftX < curFrame->width && j + shiftY < curFrame->height){		
-				setColorPixel(*newFrame, i, j, getColorPixel(curFrame, i + shiftX / 2, j + shiftY / 2, 0), 0);
-				setColorPixel(*newFrame, i, j, getColorPixel(curFrame, i + shiftX / 2, j + shiftY / 2, 1), 1);
-				setColorPixel(*newFrame, i, j, getColorPixel(curFrame, i + shiftX / 2, j + shiftY / 2, 2), 2);
+				setColorPixel(*newFrame, i, j, getColorPixel(curFrame, i - shiftX / 2, j - shiftY / 2, 0), 0);
+				setColorPixel(*newFrame, i, j, getColorPixel(curFrame, i - shiftX / 2, j - shiftY / 2, 1), 1);
+				setColorPixel(*newFrame, i, j, getColorPixel(curFrame, i - shiftX / 2, j - shiftY / 2, 2), 2);
 			}
 		}		
 }
-
+ 
+/** Function createNewFrame(IplImage ** newFrame, IplImage *refFrame, IplImage *curFrame, BlockMotionVectorPtr motionVectorQueueNode, double threshold)
+ *		Main function of creating the new image between frames 
+ */
 void createNewFrame(IplImage ** newFrame, IplImage *refFrame, IplImage *curFrame, BlockMotionVectorPtr motionVectorQueueNode, double threshold){
 	if(motionVectorQueueNode == NULL){
 		fprintf(stderr, "Error: Motion Vector Queue is empty\n");
@@ -300,15 +497,21 @@ void createNewFrame(IplImage ** newFrame, IplImage *refFrame, IplImage *curFrame
 }
 
 
+/****************************************************************************************************************************
+ * Main Function
+ ****************************************************************************************************************************/
 int main(void){
 
 	//Read images
-	IplImage * refFrame = cvLoadImage("images/test/P1030710.jpg");
-	IplImage * curFrame = cvLoadImage("images/test/P1030711.jpg");
+	IplImage * refFrame = cvLoadImage("images/test/P1030703.jpg");
+	IplImage * curFrame = cvLoadImage("images/test/P1030704.jpg");
 
 	BlockMotionVectorPtr headMotionVectorPtr = NULL;
 	BlockMotionVectorPtr tailMotionVectorPtr = NULL;
-	
+
+	DistanceFrequencyNodePtr headDistanceFrequencyPtr = NULL;
+	DistanceFrequencyNodePtr tailDistanceFrequencyPtr = NULL;
+
 	/*
 	cvNamedWindow("test", 1); 
 	cvShowImage("test", refFrame);
@@ -351,7 +554,6 @@ int main(void){
 	cvCvtColor(curFrame, curGrayPlane, CV_BGR2GRAY);
 
 	allocateOnDemand(&segmentedImage, cvGetSize(curFrame), IPL_DEPTH_8U, 1);
-	//cvCvtColor(curFrame, curGrayPlane, CV_BGR2GRAY);
 
 	shrinkImage(refGrayPlane, &shrunkrefPlane, PYRAMIDLEVEL);
 	shrinkImage(curGrayPlane, &shrunkcurPlane, PYRAMIDLEVEL);
@@ -363,20 +565,24 @@ int main(void){
 	*/
 
 	//Without pyramid
-	getBlockShift(refGrayPlane, curGrayPlane, &headMotionVectorPtr, &tailMotionVectorPtr);
+	//getBlockShift(refGrayPlane, curGrayPlane, &headMotionVectorPtr, &tailMotionVectorPtr);
 
 	//Do with pyramid to speed up
-	//getBlockShift(shrunkrefPlane, shrunkcurPlane, &headMotionVectorPtr, &tailMotionVectorPtr);
+	getBlockShift(shrunkrefPlane, shrunkcurPlane, &headMotionVectorPtr, &tailMotionVectorPtr);
 
 	
 	//printMotionVectors(headMotionVectorPtr);
 
 	//Print out threshold
 	double distanceThreshold = computeDistanceThreshold(headMotionVectorPtr);
-	printf("Threshold: %f\n", distanceThreshold);
+	double weightedDistanceThreshold = weightedMeanDistanceThreshold(headMotionVectorPtr, &headDistanceFrequencyPtr, &tailDistanceFrequencyPtr);
+	printf("Mean Threshold: %f\n", distanceThreshold);
+	printf("Weighted Mean Threshold: %f\n", weightedDistanceThreshold);
 
 	segmentImage(&segmentedImage, headMotionVectorPtr, distanceThreshold);
 	createNewFrame(&newFrame, refFrame, curFrame, headMotionVectorPtr, distanceThreshold);
+
+	cvSaveImage("images/test/new.jpg", newFrame);
 
 	cvNamedWindow("Segmented", 1); 
 	cvShowImage("Segmented", segmentedImage);
