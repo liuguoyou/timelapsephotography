@@ -93,3 +93,18 @@ unsigned char getPixel(const IplImage* image, int x, int y){
 void setPixel(IplImage* image, int x, int y, unsigned char value){
   ((unsigned char*)(image->imageData + image->widthStep*y))[x*image->nChannels]=value;
 }
+
+/** 
+ * Implementation of Function allocateOnDemand( IplImage **img, CvSize size, int depth, int channels )
+ */
+void allocateOnDemand( IplImage **img, CvSize size, int depth, int channels )
+{
+	if ( *img != NULL )	return;
+
+	*img = cvCreateImage( size, depth, channels );
+	if ( *img == NULL )
+	{
+		fprintf(stderr, "Error: Couldn't allocate image.  Out of memory?\n");
+		exit(-1);
+	}
+}

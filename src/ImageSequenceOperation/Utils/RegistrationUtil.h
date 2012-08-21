@@ -9,9 +9,55 @@
 #include <iostream>
 #include <io.h>
 #include <string.h>
+#define PYRAMID_LEVEL 5
+#define MATCH_THRESHOLD 0.9
  
 using namespace std;
 using namespace cv;
+
+
+struct imageInfoNode{
+	int imageIndex;
+	long matchedImageNumbers;
+	int shiftX;
+	int shiftY;
+	struct imageInfoNode * previousPtr;
+	struct imageInfoNode * nextPtr;
+};
+
+typedef struct imageInfoNode ImageInfoNode;
+typedef ImageInfoNode * ImageInfoNodePtr;
+
+
+/** Function isImageInfoQueueEmpty(BlockMotionVectorPtr headPtr)
+ *		To judge if the queue is empty
+ *	Return:
+ *		if ture, return 1, otherwise, 0
+ */
+int isImageInfoQueueEmpty(ImageInfoNodePtr headPtr);
+
+/** Function enqueueImageInfo(ImageInfoNodePtr *headPtr, ImageInfoNodePtr * tailPtr, int imageIndex, long matchedImageNumbers, int shiftX, int shiftY);
+ *		Insert a node to the tail of the queue, which is double linked with previous and next address that are linked to neighbours
+ */
+void enqueueImageInfo(ImageInfoNodePtr *headPtr, ImageInfoNodePtr * tailPtr, int imageIndex, long matchedImageNumbers, int shiftX, int shiftY);
+
+/**
+ * Function createGrayPlane(const IplImage *srcImage, IplImage* &grayPlane)
+ *		Allocate and compute the gray plane of the source image.
+ * Parameters:
+ *		srcImage: the original image to be processed
+ *		grayPlane: image storing the gray plane
+ */
+void createGrayPlane(const IplImage *srcImage, IplImage* &grayPlane);
+
+/**
+ * Function isImagesMatch(const IplImage *srcGrayImage1, const IplImage *srcGrayImage2)
+ *		Substract two images and judge weather two images are matched by finding the percentage of difference images
+ * Parameters:
+ *		srcGrayImage1: the first original gray image to be processed
+ *		srcGrayImage2: the first original gray image to be processed
+ */
+int isImagesMatch(const IplImage *srcGrayImage1, const IplImage *srcGrayImage2);
 
 /**
  * Function createBitmaps(const IplImage *img, BYTE *tb, BYTE *eb)
@@ -30,7 +76,7 @@ void createBitmaps(const IplImage* img, IplImage* &mtb, IplImage* &eb);
  *		sourceImage: the original image to be processed
  *		nextLevel: the shrunk image whose size is a quarter of the source image
  */
-void shrinkImage2(const IplImage* sourceImage, IplImage* &nextLevel);
+void shrinkImage(const IplImage * srcImage, IplImage ** dstImage, int downwardLevel);
 
 /**
  * Function shiftBitMap(const IplImage* srcImage, int xOffset, int yOffset, IplImage* &result)
@@ -70,6 +116,10 @@ void andBitMap(const IplImage* srcImage1, const IplImage* srcImage2, IplImage* &
  */
 int totalOneInBitMap(const IplImage* srcImage);
 
+/** 
+ *
+ */
+
 /**
  * Function  getExpShift(const IplImage * srcImage1, const IplImage * srcImage2, int shiftBits, int shiftRet[])
  *		find shift in X and Y directions, for an image, with one reference, shiftBits is specified to control the pyramid level
@@ -80,3 +130,13 @@ int totalOneInBitMap(const IplImage* srcImage);
  *		shiftRet[]: array contains two integers that denote shifts in X and Y directions
  */
 void getExpShift(const IplImage * srcImage1, const IplImage * srcImage2, int shiftBits, int shiftRet[]);
+
+/**
+ * Function findReferencePoint(vector<string> srcFileNames)
+ *		Try to find the best registration point inorder to do tha fastest registration
+ * Parameters:
+ *		srcFileNames: the vector that stores file names in the folder which contains all files in image sequence
+ * Return:
+ *		reference number, an integer that denotes the image index which will be select as reference.
+ */
+int findReferencePoint(vector<string> srcFileNames);

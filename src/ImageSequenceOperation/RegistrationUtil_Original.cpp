@@ -35,27 +35,7 @@ void enqueueImageInfo(ImageInfoNodePtr *headPtr, ImageInfoNodePtr * tailPtr, int
 	}
 }
 
-/**
- * Implementation of Function createGrayPlane(const IplImage *srcImage, IplImage* &grayPlane)
- */
-void createGrayPlane(const IplImage *srcImage, IplImage ** grayPlane){
-	allocateOnDemand(grayPlane, cvGetSize(srcImage), srcImage->depth, 1);
-	cvCvtColor(srcImage, grayPlane, CV_BGR2GRAY);
-}
 
-/**
- * Implementation of Function differImages(const IplImage *srcGrayImage1, const IplImage *srcGrayImage2)
- */
-int isImagesMatch(const IplImage *srcGrayImage1, const IplImage *srcGrayImage2){
-	int matchedPixelNumber = 0;
-
-	for(int i = 0; i < srcGrayImage1->width; i++)
-		for(int j = 0; j < srcGrayImage1->height; j++)
-			if(getPixel(srcGrayImage1, i, j) - getPixel(srcGrayImage2, i, j) == 0)
-				matchedPixelNumber++;
-
-	return matchedPixelNumber / (srcGrayImage1->width * srcGrayImage1->height) >= MATCH_THRESHOLD;
-}
 
 /**
  * Implementation of Function createBitmaps(const IplImage *img, BYTE *tb, BYTE *eb)
@@ -118,16 +98,19 @@ void createBitmaps(const IplImage *srcImage, IplImage* &mtb, IplImage* &eb){
  * Implementation of Function void shrinkImage2(IplImage* sourceImage, IplImage* &nextLevel)
  */
 void shrinkImage(const IplImage * srcImage, IplImage ** dstImage, int downwardLevel){
-	if(downwardLevel == 0) {
-		*dstImage = cvCloneImage(srcImage);
+	if(downwardLevel == 0) return;
+
+	IplImage * tempImage = NULL;
+
+	allocateOnDemand(&tempImage, cvSize(srcImage->width / 2, srcImage->height / 2), srcImage->depth, srcImage->nChannels);
+
+	cvPyrDown(srcImage, tempImage, CV_GAUSSIAN_5x5);
+
+	if(downwardLevel == 1){	
+		//allocateOnDemand(dstImage, cvGetSize(tempImage), tempImage->depth, tempImage->nChannels);
+		*dstImage = cvCloneImage(tempImage);
+		cvReleaseImage(&tempImage);
 	} else{
-
-		IplImage * tempImage = NULL;
-
-		allocateOnDemand(&tempImage, cvSize(srcImage->width / 2, srcImage->height / 2), srcImage->depth, srcImage->nChannels);
-
-		cvPyrDown(srcImage, tempImage, CV_GAUSSIAN_5x5);
-
 		downwardLevel--;
 		shrinkImage(tempImage, dstImage, downwardLevel);
 	}
@@ -238,52 +221,132 @@ int totalOneInBitMap(const IplImage* srcImage){
 }
 
 /**
+ * Implementation of Function getExpShift(const IplImage * srcImage1, const IplImage * srcImage2, int shiftBits, int shiftRet[])
+ */
+void getExpShift(const IplImage * srcImage1, const IplImage * srcImage2, int shiftBits, int shiftRet[]){
+	int minErr;
+	int curShift[2];
+
+	IplImage *tb1 = cvCreateImage(cvGetSize(srcImage1), 8, 1);
+	IplImage *tb2 = cvCreateImage(cvGetSize(srcImage2), 8, 1);
+	IplImage *eb1 = cvCreateImage(cvGetSize(srcImage1), 8, 1);
+	IplImage *eb2 = cvCreateImage(cvGetSize(srcImage2), 8, 1);
+
+	int i, j;
+
+	if(shiftBits > 0){
+		IplImage *sm1Img1 = cvCreateImage(cvSize(srcImage1->width/2, srcImage1->height/2), srcImage1->depth, srcImage1->nChannels);
+		IplImage *sm1Img2 = cvCreateImage(cvSize(srcImage2->width/2, srcImage2->height/2), srcImage2->depth, srcImage2->nChannels);
+
+		shrinkImage2(srcImage1, sm1Img1);
+		shrinkImage2(srcImage2, sm1Img2);
+
+		getExpShift(sm1Img1, sm1Img2, shiftBits - 1, curShift);
+
+		cvReleaseImage(&sm1Img1);
+		cvReleaseImage(&sm1Img2);
+
+		shiftRet[0] = curShift[0] * 2;
+		shiftRet[1] = curShift[1] * 2;
+	} else {
+		curShift[0] = curShift[1] = 0;
+
+		createBitmaps(srcImage1, tb1, eb1);
+		createBitmaps(srcImage2, tb2, eb2);
+		/*
+		cvNamedWindow( "TB1", 1 ); 
+		cvShowImage("TB1", tb1);
+		cvWaitKey(0);
+
+		cvNamedWindow( "EB1", 1 ); 
+		cvShowImage("EB1", eb1);
+		cvWaitKey(0);
+		*/
+		minErr = srcImage1->width * srcImage1->height;
+
+		for(i = -1; i < 1; i++)
+			for(j = -1; j < 1; j++) {
+				int xOffset = curShift[0] + i;
+				int yOffset = curShift[1] + j;
+
+				IplImage * shiftedTB2 = cvCreateImage(cvGetSize(srcImage2), 8, 1);
+				IplImage * shiftedEB2 = cvCreateImage(cvGetSize(srcImage2), 8, 1);
+				IplImage * diffBMP = cvCreateImage(cvGetSize(srcImage2), 8, 1);
+
+				int err;
+
+				shiftBitMap(tb2, xOffset, yOffset, shiftedTB2);
+				shiftBitMap(eb2, xOffset, yOffset, shiftedEB2);
+				/*
+				cvNamedWindow( "ShiftedEB2", 1 ); 
+				cvShowImage("ShiftedEB2", shiftedEB2);
+				cvWaitKey(0);
+				*/
+				xorBitMap(tb1, shiftedTB2, diffBMP);
+				
+				/*
+				cvNamedWindow( "tb1", 1 ); 
+				cvShowImage("tb1", tb1);
+				cvWaitKey(0);
+
+				cvNamedWindow( "shiftedTB2", 1 ); 
+				cvShowImage("shiftedTB2", shiftedTB2);
+				cvWaitKey(0);
+
+				cvNamedWindow( "diffBMP_XOR", 1 ); 
+				cvShowImage("diffBMP_XOR", diffBMP);
+				cvWaitKey(0);
+
+				*/
+				
+				andBitMap(diffBMP, eb1, diffBMP);
+
+				/*
+				cvNamedWindow( "eb1", 1 ); 
+				cvShowImage("eb1", eb1);
+				cvWaitKey(0);
+				
+				cvNamedWindow( "diffBMP_AND", 1 ); 
+				cvShowImage("diffBMP_AND", diffBMP);
+				cvWaitKey(0);
+				*/
+				
+				andBitMap(diffBMP, shiftedEB2, diffBMP);
+
+				/*
+				cvNamedWindow( "shiftedEB2", 1 ); 
+				cvShowImage("shiftedEB2", shiftedEB2);
+				cvWaitKey(0);
+				
+				cvNamedWindow( "diffBMP_AND2", 1 ); 
+				cvShowImage("diffBMP_AND2", diffBMP);
+				cvWaitKey(0);
+				*/
+
+				err = totalOneInBitMap(diffBMP);
+
+				if(err < minErr) {
+					shiftRet[0] = xOffset;
+					shiftRet[1] = yOffset;
+					minErr = err;
+				}
+				cvReleaseImage(&shiftedTB2);
+				cvReleaseImage(&shiftedEB2);
+			}
+
+			cvReleaseImage(&tb1);
+			cvReleaseImage(&tb2);
+			cvReleaseImage(&eb1);
+			cvReleaseImage(&eb2);
+	}
+}
+
+/**
  * Implementation of Function findReferencePoint(vector<string> srcFileNames)
  */
-int findReferencePoint(vector<string>& srcFileNames){
-	int referencePoint = 0, index = 1, refIndex = 0;
-	int matchNumbers = 0;
+int findReferencePoint(vector<string> srcFileNames){
+	int referencePoint = 0;
 
-	vector<string>::iterator iter;
 
-	IplImage *src1 = NULL, *src2 = NULL, 
-			 *grayPlane1 = NULL, *grayPlane2 = NULL, 
-			 *shunkedGrayPlane1 = NULL, *shunkedGrayPlane2 = NULL;
 
-	for(iter = srcFileNames.begin() + 1; iter < srcFileNames.end(); iter++){
-		// Read image ( same size, same type )
-		src1 = cvLoadImage(srcFileNames[refIndex].c_str(), 1);
-		src2 = cvLoadImage(srcFileNames[index].c_str(), 1);
-
-		// File check
-		if(src1 ==  NULL) { 
-			fprintf(stderr, "Error: Error loading src1!\n");
-			exit(-1);
-		}
-		if(src2 ==  NULL) { 
-			fprintf(stderr, "Error: Error loading src2!\n");
-			exit(-1);
-		}
-
-		//create gray planes
-		createGrayPlane(src1, &grayPlane1);
-		createGrayPlane(src2, &grayPlane2);
-
-		//shrink images according to pyramid level
-		shrinkImage(grayPlane1, &shunkedGrayPlane1, PYRAMID_LEVEL);
-		shrinkImage(grayPlane2, &shunkedGrayPlane2, PYRAMID_LEVEL);
-
-		if(isImagesMatch(shunkedGrayPlane1, shunkedGrayPlane2)){
-			//Two images match, move to next image, continue comparison
-			matchNumbers++;
-			index++;
-		} else{
-			
-
-			//TODO COMPUTE MOTION VECTOR, ENQUEUE
-
-			refIndex = index;
-			index++;
-		}
-	}
 }
