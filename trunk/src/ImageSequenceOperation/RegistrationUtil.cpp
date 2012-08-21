@@ -110,7 +110,7 @@ void enqueueDistanceFrequency(DistanceFrequencyNodePtr *headPtr, DistanceFrequen
 			}
 		}
 
-		free(tempPtr);
+		//free(tempPtr);
 	}
 }
 
@@ -152,7 +152,7 @@ void enqueueImageInfo(ImageInfoNodePtr *headPtr, ImageInfoNodePtr * tailPtr, lon
  * Implementation of Function createGrayPlane(const IplImage *srcImage, IplImage* &grayPlane)
  */
 void createGrayPlane(const IplImage *srcImage, IplImage ** grayPlane){
-	allocateOnDemand(grayPlane, cvGetSize(srcImage), srcImage->depth, 1);
+	//allocateOnDemand(grayPlane, cvGetSize(srcImage), srcImage->depth, 1);
 	cvCvtColor(srcImage, grayPlane, CV_BGR2GRAY);
 }
 
@@ -162,10 +162,19 @@ void createGrayPlane(const IplImage *srcImage, IplImage ** grayPlane){
 int isImagesMatch(const IplImage *srcGrayImage1, const IplImage *srcGrayImage2){
 	long matchedPixelNumber = 0;
 
-	for(int i = 0; i < srcGrayImage1->width; i++)
-		for(int j = 0; j < srcGrayImage1->height; j++)
-			if(getPixel(srcGrayImage1, i, j) - getPixel(srcGrayImage2, i, j) == 0)
-				matchedPixelNumber++;
+	IplImage *result = NULL;
+	allocateOnDemand(&result, cvGetSize(srcGrayImage1), srcGrayImage1->depth, 1);
+
+	cvXor(srcGrayImage1, srcGrayImage2, result, 0);
+
+	for(int i = 0; i < result->width; i++)
+		for(int j = 0; j < result->height; j++)
+			printf("%d\n", getPixel(result, i, j));
+
+
+	cvNamedWindow( "XORresult", 1 ); 
+	cvShowImage("XORresult", result);		
+	cvWaitKey(0);
 
 	return matchedPixelNumber / (srcGrayImage1->width * srcGrayImage1->height) >= MATCH_THRESHOLD;
 }
@@ -335,7 +344,7 @@ void getImageShift(BlockMotionVectorPtr motionVectorQueueNode, DistanceFrequency
 
 		while(tempPtr != NULL){
 
-			if(sqrt(square(tempPtr->shiftX) + square(tempPtr->shiftY)) <= smallestDistance && tempPtr->frequency >= largestFrequency){
+			if(sqrt(square(tempPtr->shiftX) + square(tempPtr->shiftY)) <= smallestDistance){
 				smallestDistance = sqrt(square(tempPtr->shiftX) + square(tempPtr->shiftY));
 				largestFrequency = tempPtr->frequency;
 				shiftX = tempPtr->shiftX;
@@ -372,7 +381,7 @@ int findReferencePoint(ImageInfoNodePtr *headImageInfoNodePtr, ImageInfoNodePtr 
 	//ImageInfoNodePtr headImageInfoNodePtr = NULL;
 	//ImageInfoNodePtr tailImageInfoNodePtr = NULL;
 
-	while(index <= srcFileNames.capacity()){
+	while(index < (long) srcFileNames.size()){
 		if(groupChanged)
 			matchNumbers = 0;
 		// Read image ( same size, same type )
@@ -390,18 +399,22 @@ int findReferencePoint(ImageInfoNodePtr *headImageInfoNodePtr, ImageInfoNodePtr 
 		}
 
 		//create gray planes
-		createGrayPlane(src1, &grayPlane1);
-		createGrayPlane(src2, &grayPlane2);
+		allocateOnDemand(&grayPlane1, cvGetSize(src1), src1->depth, 1);
+		allocateOnDemand(&grayPlane2, cvGetSize(src2), src2->depth, 1);
+		cvCvtColor(src1, grayPlane1, CV_BGR2GRAY);
+		cvCvtColor(src2, grayPlane2, CV_BGR2GRAY);
+		//createGrayPlane(src1, &grayPlane1);
+		//createGrayPlane(src2, &grayPlane2);
 
 		//shrink images according to pyramid level
 		shrinkImage(grayPlane1, &shunkedGrayPlane1, PYRAMID_LEVEL);
 		shrinkImage(grayPlane2, &shunkedGrayPlane2, PYRAMID_LEVEL);
 
-		if(isImagesMatch(shunkedGrayPlane1, shunkedGrayPlane2)){
+		//if(isImagesMatch(shunkedGrayPlane1, shunkedGrayPlane2)){
 			//Two images match, move to next image, continue comparison
-			matchNumbers++;
-			index++;
-		} else{
+			//matchNumbers++;
+			//index++;
+		//} else{
 			//COMPUTE MOTION VECTOR, ENQUEUE
 			getBlockShift(shunkedGrayPlane1, shunkedGrayPlane2, &headMotionVectorPtr, &tailMotionVectorPtr);
 
@@ -411,14 +424,15 @@ int findReferencePoint(ImageInfoNodePtr *headImageInfoNodePtr, ImageInfoNodePtr 
 
 			enqueueImageInfo(headImageInfoNodePtr, tailImageInfoNodePtr, refIndex, matchNumbers, shiftArray[0], shiftArray[1]);
 
-			if(index == srcFileNames.capacity())
-				enqueueImageInfo(headImageInfoNodePtr, tailImageInfoNodePtr, index, 0, 0, 0);
+			//if(index == (long) srcFileNames.size())
 
 			refIndex = index;
 			index++;
 			groupChanged = 1;
-		}
+		//}
 	}
+
+	enqueueImageInfo(headImageInfoNodePtr, tailImageInfoNodePtr, index - 1, 0, 0, 0);
 
 	ImageInfoNodePtr tempPtr = NULL;
 	tempPtr = (ImageInfoNodePtr)malloc(sizeof(ImageInfoNode));
@@ -448,16 +462,21 @@ int findReferencePoint(ImageInfoNodePtr *headImageInfoNodePtr, ImageInfoNodePtr 
 }
 
 /**
- * Implementation of Function adjustShiftsToReferenceImage(ImageInfoNodePtr imageInfoNode, ImageInfoNodePtr * tailImageInfoNode, long referencePoint)
+ * Implementation of Function adjustShiftsToReferenceImage(ImageInfoNodePtr * imageInfoNodePtr, ImageInfoNodePtr * tailImageInfoNode, ImageInfoNodePtr * newHead, ImageInfoNodePtr * newTail, long referencePoint)
  */
-void adjustShiftsToReferenceImage(ImageInfoNodePtr imageInfoNode, ImageInfoNodePtr * tailImageInfoNode, long referencePoint){
+ImageInfoNodePtr * adjustShiftsToReferenceImage(ImageInfoNodePtr * imageInfoNodePtr, ImageInfoNodePtr * tailImageInfoNode, long referencePoint){
 	ImageInfoNodePtr referenceNode = NULL;
 	referenceNode = (ImageInfoNodePtr)malloc(sizeof(ImageInfoNode));
 
-	if(referenceNode == NULL){
+	ImageInfoNodePtr imageInfoNode = NULL;
+	imageInfoNode = (ImageInfoNodePtr)malloc(sizeof(ImageInfoNode));
+
+	if(referenceNode == NULL || imageInfoNode == NULL){
 		fprintf(stderr, "Error: New Image Info vector is not created, Out of memory?\n");
 		exit(-1);
 	}
+
+	imageInfoNode = *imageInfoNodePtr;
 
 	int nextShiftX = 0;
 	int nextShiftY = 0;
@@ -476,21 +495,28 @@ void adjustShiftsToReferenceImage(ImageInfoNodePtr imageInfoNode, ImageInfoNodeP
 	imageInfoNode = *tailImageInfoNode;
 
 	while(imageInfoNode->imageIndex > referencePoint){
-		imageInfoNode->shiftX = imageInfoNode->previousPtr->shiftX;
-		imageInfoNode->shiftY = imageInfoNode->previousPtr->shiftY;
+		(*imageInfoNode).shiftX = (*imageInfoNode->previousPtr).shiftX;
+		(*imageInfoNode).shiftY = (*imageInfoNode->previousPtr).shiftY;
+		//imageInfoNode->shiftX = imageInfoNode->previousPtr->shiftX;
+		//imageInfoNode->shiftY = imageInfoNode->previousPtr->shiftY;
 
 		imageInfoNode = imageInfoNode->previousPtr;
 	}
 	
 	referenceNode->shiftX = referenceNode->shiftY = 0;
 
+	(*referenceNode).shiftX = (*referenceNode).shiftY = 0;
+
 	imageInfoNode = referenceNode->nextPtr;
 
 	//Adjust nodes after reference node
 	while(imageInfoNode != NULL){
 
-		imageInfoNode->shiftX += imageInfoNode->previousPtr->shiftX;
-		imageInfoNode->shiftY += imageInfoNode->previousPtr->shiftY;
+		//imageInfoNode->shiftX += imageInfoNode->previousPtr->shiftX;
+		//imageInfoNode->shiftY += imageInfoNode->previousPtr->shiftY;
+
+		(*imageInfoNode).shiftX += (*imageInfoNode->previousPtr).shiftX;
+		(*imageInfoNode).shiftY += (*imageInfoNode->previousPtr).shiftY;
 
 		imageInfoNode = imageInfoNode->nextPtr;		
 	}
@@ -501,10 +527,21 @@ void adjustShiftsToReferenceImage(ImageInfoNodePtr imageInfoNode, ImageInfoNodeP
 		imageInfoNode->shiftX = imageInfoNode->nextPtr->shiftX - imageInfoNode->shiftX;
 		imageInfoNode->shiftY = imageInfoNode->nextPtr->shiftY - imageInfoNode->shiftY;
 
+
+		(*imageInfoNode).shiftX = (*imageInfoNode->nextPtr).shiftX - (*imageInfoNode).shiftX;
+		(*imageInfoNode).shiftY = (*imageInfoNode->nextPtr).shiftY - (*imageInfoNode).shiftY;
+
 		imageInfoNode = imageInfoNode->previousPtr;
 	}
 
-	free(referenceNode);
+	while(referenceNode->previousPtr != NULL){
+		referenceNode = referenceNode ->previousPtr;
+	}
+
+	//imageInfoNodePtr = &referenceNode;
+	//free(referenceNode);
+
+	return &referenceNode;
 }
 
 /**
@@ -513,8 +550,10 @@ void adjustShiftsToReferenceImage(ImageInfoNodePtr imageInfoNode, ImageInfoNodeP
 void shiftImageSequence(ImageInfoNodePtr imageInfoNode, vector<string>& srcFileNames, vector<string>& dstFileNames){
 	long matchedNumber = 0;
 	
+	long index = 0;
+
 	for (vector<string>::const_iterator iter = srcFileNames.begin( ) + 1; iter != srcFileNames.end( ); iter++){
-		long index = 0;
+		
 
 		IplImage  * srcImage = cvLoadImage(srcFileNames[index].c_str(),1);
 
@@ -524,11 +563,17 @@ void shiftImageSequence(ImageInfoNodePtr imageInfoNode, vector<string>& srcFileN
 		
 
 		shiftImage(srcImage, imageInfoNode->shiftX, imageInfoNode->shiftY, shiftedImage);
-		matchedNumber++;
-
-		if(matchedNumber == imageInfoNode->matchedImageNumbers){
-			matchedNumber = 0;
+		
+		if(imageInfoNode->matchedImageNumbers == 0){
 			imageInfoNode = imageInfoNode->nextPtr;
+		} else{
+			matchedNumber++;
+
+			if(matchedNumber > imageInfoNode->matchedImageNumbers){
+				matchedNumber = 0;
+				imageInfoNode = imageInfoNode->nextPtr;
+			}
+		
 		}
 
 		/*
