@@ -4,6 +4,14 @@
 
 #include "Utils.h"
 
+/** Implemrnyaion of Function 
+ *		square(int a)
+ */
+double square(int a)
+{
+	return a * a;
+}
+
 /** 
  * Implementation of Function 
  *		getFileNames(string path, vector<string>& files)

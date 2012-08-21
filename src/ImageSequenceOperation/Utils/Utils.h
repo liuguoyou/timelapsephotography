@@ -13,6 +13,14 @@
 using namespace std;
 using namespace cv;
 
+
+/** Function square(int a)
+ *		To compute square value of integer a
+ *	Return:
+ *		double value of a^2
+ */
+double square(int a);
+
 /** Function getFileNames(string path, vector<string>& files)
  *		To search in a directory, including all files, typically image files in this case, and store their names in a vector
  *	Parameters:
