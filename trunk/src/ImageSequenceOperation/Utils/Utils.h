@@ -46,3 +46,10 @@ unsigned char getPixel(const IplImage* image, int x, int y);
  */
 //sets pixel at image position (x,y)
 void setPixel(IplImage* image, int x, int y, unsigned char value);
+
+/** Function allocateOnDemand( IplImage **img, CvSize size, int depth, int channels )
+ *		it allocates the requested image
+ *		unless that image is already non-NULL.  It always leaves a non-NULL image as-is even
+ *		if that image's size, depth, and/or channels are different than the request.
+ */
+void allocateOnDemand( IplImage **img, CvSize size, int depth, int channels );
