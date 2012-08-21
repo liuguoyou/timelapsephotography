@@ -13,8 +13,8 @@
 /*******************************************
  * defines
  *******************************************/
-#define BLOCK_SIZE 1
-#define SEARCH_RANGE 5
+#define BLOCK_SIZE 2
+#define SEARCH_RANGE 4
 #define PYRAMID_LEVEL 5
 #define MATCH_THRESHOLD 0.9
  
@@ -176,7 +176,7 @@ int findReferencePoint(ImageInfoNodePtr *headImageInfoNodePtr, ImageInfoNodePtr 
  * Return:
  *		reference number, an integer that denotes the image index which will be select as reference.
  */
-void adjustShiftsToReferenceImage(ImageInfoNodePtr imageInfoNode, ImageInfoNodePtr * tailImageInfoNode, long referencePoint);
+ImageInfoNodePtr * adjustShiftsToReferenceImage(ImageInfoNodePtr * imageInfoNodePtr, ImageInfoNodePtr * tailImageInfoNode, long referencePoint);
 
 /**
  * Function shiftImageSequence(ImageInfoNodePtr imageInfoNode, vector<string>& srcFileNames, vector<string>& dstFileNames)

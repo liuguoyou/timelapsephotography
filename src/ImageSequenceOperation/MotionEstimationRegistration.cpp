@@ -29,6 +29,8 @@ int main(int argc, char* argv[]){
 
 	ImageInfoNodePtr headImageInfoNodePtr = NULL;
 	ImageInfoNodePtr tailImageInfoNodePtr = NULL;
+	//ImageInfoNodePtr adjustedHead = NULL;
+	//ImageInfoNodePtr adjustedTail = NULL;
 
 	//iterator iter = new
 
@@ -46,7 +48,7 @@ int main(int argc, char* argv[]){
 	//Show the unregistrated images
     //showImages(srcFileNames, "Unaligned images");
 	long referencePoint = findReferencePoint(&headImageInfoNodePtr, &tailImageInfoNodePtr, srcFileNames);
-	adjustShiftsToReferenceImage(headImageInfoNodePtr, &tailImageInfoNodePtr, referencePoint);
+	headImageInfoNodePtr =  * adjustShiftsToReferenceImage(&headImageInfoNodePtr, &tailImageInfoNodePtr, referencePoint);
 	shiftImageSequence(headImageInfoNodePtr, srcFileNames, dstFileNames);
 	//const IplImage * srcImage1, const IplImage * srcImage2, int shiftBits, int shiftRet[2]
 	
