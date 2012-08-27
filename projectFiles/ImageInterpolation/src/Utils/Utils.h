@@ -33,7 +33,8 @@ struct blockMotionVector{
 };
 
 struct distanceFrequencyNode{
-	double distance;
+	int shiftX;
+	int shiftY;
 	long frequency;
 	struct distanceFrequencyNode *nextPtr;
 };
@@ -88,7 +89,7 @@ int isDistanceFrequencyQueueEmpty(DistanceFrequencyNodePtr headPtr);
  *		tailPtr: address of head node of the queue
  *		distance: the distance computed from motion vector
  */
-void enqueueDistanceFrequency(DistanceFrequencyNodePtr *headPtr, DistanceFrequencyNodePtr *tailPtr, double distance);
+void enqueueDistanceFrequency(DistanceFrequencyNodePtr *headPtr, DistanceFrequencyNodePtr *tailPtr, int shiftX, int shiftY);
 
 /** Function square(int a)
  *		To compute square value of integer a

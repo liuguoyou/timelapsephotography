@@ -72,8 +72,6 @@ void getBlockShift(IplImage * referenceFrame, IplImage * currentFrame, BlockMoti
 							}
 						}
 
-					//squareSumMatrix[matrixIndex] = sum;
-					//matrixIndex++;
 					if(!isThePositionOutOfRange){
 						if(isFirstSumInRange){
 							smallestSquareSum = sum;
@@ -130,8 +128,6 @@ void segmentImage(IplImage ** newImage, BlockMotionVectorPtr motionVectorQueueNo
 double computeDistanceThreshold(BlockMotionVectorPtr motionVectorQueueNode){
 	long count = 0;
 	double sum = 0;
-	//double smallest = sqrt(square(motionVectorQueueNode->shiftX) + square(motionVectorQueueNode->shiftY));
-	//double largest = sqrt(square(motionVectorQueueNode->shiftX) + square(motionVectorQueueNode->shiftY));
 
 	if(motionVectorQueueNode == NULL){
 		fprintf(stderr, "Error: Motion Vector Queue is empty\n");
@@ -140,63 +136,11 @@ double computeDistanceThreshold(BlockMotionVectorPtr motionVectorQueueNode){
 		while(motionVectorQueueNode != NULL){
 			
 			if(motionVectorQueueNode->shiftX != 0 || motionVectorQueueNode->shiftY !=0){
-				/*
-				if(sqrt(square(motionVectorQueueNode->shiftX) + square(motionVectorQueueNode->shiftY)) < smallest){
-					smallest = sqrt(square(motionVectorQueueNode->shiftX) + square(motionVectorQueueNode->shiftY));
-				} 
-
-				if(sqrt(square(motionVectorQueueNode->shiftX) + square(motionVectorQueueNode->shiftY)) >= largest){
-					largest = sqrt(square(motionVectorQueueNode->shiftX) + square(motionVectorQueueNode->shiftY));
-				}
-				*/
 				count++;
 				sum += sqrt(square(motionVectorQueueNode->shiftX) + square(motionVectorQueueNode->shiftY));
 			}
 			motionVectorQueueNode = motionVectorQueueNode->nextPtr;
 		}
-
-		return sum / count;
-	}
-}
-
-/** 
- * Implementation of Function computeDistanceThreshold(BlockMotionVectorPtr motionVectorQueueNode)
- */
-double weightedMeanDistanceThreshold(BlockMotionVectorPtr motionVectorQueueNode, DistanceFrequencyNodePtr *headPtr, DistanceFrequencyNodePtr *tailPtr){
-	long count = 0;
-	double sum = 0;
-
-	if(motionVectorQueueNode == NULL){
-		fprintf(stderr, "Error: Motion Vector Queue is empty\n");
-		exit(-1);
-	} else{
-		while(motionVectorQueueNode != NULL){
-			if(motionVectorQueueNode->shiftX != 0 || motionVectorQueueNode->shiftY != 0){	
-				enqueueDistanceFrequency(headPtr, tailPtr, sqrt(square(motionVectorQueueNode->shiftX) + square(motionVectorQueueNode->shiftY)));
-			
-				count++;	
-			}
-			motionVectorQueueNode = motionVectorQueueNode->nextPtr;
-		}
-
-		DistanceFrequencyNodePtr tempPtr;
-		tempPtr = (DistanceFrequencyNodePtr)malloc(sizeof(DistanceFrequencyNode));
-
-		if(tempPtr != NULL){
-			tempPtr = *headPtr;
-		} else{
-			fprintf(stderr, "Error: New Temp Distance Frequency is not inserted, Out of memory?\n");
-			exit(-1);
-		}
-
-		while(tempPtr != NULL){
-
-			sum += tempPtr->distance * tempPtr->frequency;
-
-			tempPtr = tempPtr->nextPtr;
-		}
-
-		//free(tempPtr);
 
 		return sum / count;
 	}
@@ -235,6 +179,9 @@ void fillMotionBlock(IplImage ** newFrame, IplImage * curFrame, int beginPositio
  * Implementation of Function createNewFrame(IplImage ** newFrame, IplImage *refFrame, IplImage *curFrame, BlockMotionVectorPtr motionVectorQueueNode, double threshold)
  */
 void createNewFrame(IplImage ** newFrame, IplImage *refFrame, IplImage *curFrame, BlockMotionVectorPtr motionVectorQueueNode, double threshold){
+	
+	
+	
 	if(motionVectorQueueNode == NULL){
 		fprintf(stderr, "Error: Motion Vector Queue is empty\n");
 		exit(-1);
@@ -242,7 +189,6 @@ void createNewFrame(IplImage ** newFrame, IplImage *refFrame, IplImage *curFrame
 		while(motionVectorQueueNode != NULL){
 			if(shiftedDistance(motionVectorQueueNode->shiftX, motionVectorQueueNode->shiftY) >= threshold){
 				fillMotionBlock(newFrame, curFrame, motionVectorQueueNode->x * (pow(2.0, PYRAMIDLEVEL)), motionVectorQueueNode->y * (pow(2.0, PYRAMIDLEVEL)), motionVectorQueueNode->shiftX * (pow(2.0, PYRAMIDLEVEL)), motionVectorQueueNode->shiftY * (pow(2.0, PYRAMIDLEVEL)));
-
 			} else{
 				fillBackGroundBlock(newFrame, refFrame, curFrame, motionVectorQueueNode->x * (pow(2.0, PYRAMIDLEVEL)), motionVectorQueueNode->y * (pow(2.0, PYRAMIDLEVEL)));
 			}
@@ -268,12 +214,8 @@ void fillBlankPixels(IplImage * sourceImage, IplImage * interFrame, IplImage ** 
 			}
 }
 
-/** 
- * Implementation of Function isInterpolationNeeded(IplImage * referenceFrame, IplImage * currentFrame, BlockMotionVectorPtr *headPtr, BlockMotionVectorPtr *tailPtr, vector<string>& srcFileNames)
- */
-int isInterpolationNeeded(BlockMotionVectorPtr motionVectorQueueNode, int count){
-	double distanceThreshold = computeDistanceThreshold(motionVectorQueueNode);
-	return 0;
+void adjustMotionBlock(BlockMotionVectorPtr *motionVectorQueueNode){
+
 }
 
 /** 
@@ -331,6 +273,8 @@ void interpolateInSequence(char * directory, vector<string>& fileNames, vector<s
 			//Interpolation
 			createNewFrame(&interFrame, refFrame, curFrame, headMotionVectorPtr, distanceThreshold);
 			fillBlankPixels(curFrame, interFrame, &newFrame);
+
+			printf("New frame between image %ld and %ld interpolated!\n", index, index + 1);
 
 			char newName[500];
 			strcpy(newName, directory);

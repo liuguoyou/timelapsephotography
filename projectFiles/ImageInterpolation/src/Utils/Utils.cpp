@@ -76,7 +76,7 @@ int isDistanceFrequencyQueueEmpty(DistanceFrequencyNodePtr headPtr){
 /**
  * Implementation of Function enqueueDistanceFrequency(DistanceFrequencyNodePtr *headPtr, DistanceFrequencyNodePtr *tailPtr, double distance)
  */
-void enqueueDistanceFrequency(DistanceFrequencyNodePtr *headPtr, DistanceFrequencyNodePtr *tailPtr, double distance){
+void enqueueDistanceFrequency(DistanceFrequencyNodePtr *headPtr, DistanceFrequencyNodePtr *tailPtr, int shiftX, int shiftY){
 
 	if(isDistanceFrequencyQueueEmpty(*headPtr)){
 	//The first node to enter the queue
@@ -84,7 +84,8 @@ void enqueueDistanceFrequency(DistanceFrequencyNodePtr *headPtr, DistanceFrequen
 		newDistancePtr = (DistanceFrequencyNodePtr)malloc(sizeof(DistanceFrequencyNode));
 		
 		if(newDistancePtr != NULL){
-			newDistancePtr->distance = distance;
+			newDistancePtr->shiftX = shiftX;
+			newDistancePtr->shiftY = shiftY;
 			newDistancePtr->frequency = 1;
 			newDistancePtr->nextPtr = NULL;
 
@@ -110,7 +111,7 @@ void enqueueDistanceFrequency(DistanceFrequencyNodePtr *headPtr, DistanceFrequen
 		int isDistanceInQueue = 0;
 
 		while(tempPtr != NULL){
-			if(distance == tempPtr->distance){
+			if(shiftX == tempPtr->shiftX && shiftY == tempPtr->shiftY){
 				tempPtr->frequency++;
 				isDistanceInQueue = 1;
 				break;
@@ -124,7 +125,8 @@ void enqueueDistanceFrequency(DistanceFrequencyNodePtr *headPtr, DistanceFrequen
 			newDistancePtr = (DistanceFrequencyNodePtr)malloc(sizeof(DistanceFrequencyNode));
 			
 			if(newDistancePtr != NULL){
-				newDistancePtr->distance = distance;
+				newDistancePtr->shiftX = shiftX;
+				newDistancePtr->shiftY = shiftY;
 				newDistancePtr->frequency = 1;
 				newDistancePtr->nextPtr = NULL;
 

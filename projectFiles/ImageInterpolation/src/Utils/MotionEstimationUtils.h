@@ -31,10 +31,6 @@ void segmentImage(IplImage ** newImage, BlockMotionVectorPtr motionVectorQueueNo
  */
 double computeDistanceThreshold(BlockMotionVectorPtr motionVectorQueueNode);
 
-/** Function computeDistanceThreshold(BlockMotionVectorPtr motionVectorQueueNode)
- *		First version: to calculate the mean value of all distance, which is the simplest method to find a distance threshold
- */
-double weightedMeanDistanceThreshold(BlockMotionVectorPtr motionVectorQueueNode, DistanceFrequencyNodePtr *headPtr, DistanceFrequencyNodePtr *tailPtr);
 
 /** Function fillBackGroundBlock(IplImage ** newFrame, IplImage * refFrame, IplImage * curFrame, int beginPositionX, int beginPositionY)
  *		Assistant function for creation of the new image
@@ -58,9 +54,12 @@ void createNewFrame(IplImage ** newFrame, IplImage *refFrame, IplImage *curFrame
  */
 void fillBlankPixels(IplImage * sourceImage, IplImage * interFrame, IplImage ** dstImage);
 
-/** Function isInterpolationNeeded(IplImage * referenceFrame, IplImage * currentFrame, BlockMotionVectorPtr *headPtr, BlockMotionVectorPtr *tailPtr, vector<string>& srcFileNames)
- *		To decide wheather interpolate or not, if motion vector is larger than some threshold, automatically interpolate, otherwise, check next two images
+/** Function void adjustMotionBlock(BlockMotionVectorPtr *motionVectorQueueNode)
+ *		Find the point that needs interpolation and then create a new image
  */
-int isInterpolationNeeded(BlockMotionVectorPtr motionVectorQueueNode, int count);
+void adjustMotionBlock(BlockMotionVectorPtr *motionVectorQueueNode);
 
+/** Function void interpolateInSequence(char * directory, vector<string>& fileNames, vector<string>& srcFileNames, double *thresholds, int quantity)
+ *		Find the point that needs interpolation and then create a new image
+ */
 void interpolateInSequence(char * directory, vector<string>& fileNames, vector<string>& srcFileNames, double *thresholds, int quantity);
