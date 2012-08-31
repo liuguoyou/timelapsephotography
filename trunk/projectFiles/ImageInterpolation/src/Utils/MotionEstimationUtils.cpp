@@ -178,17 +178,19 @@ void fillMotionBlock(IplImage ** newFrame, IplImage * curFrame, int beginPositio
 /** 
  * Implementation of Function createNewFrame(IplImage ** newFrame, IplImage *refFrame, IplImage *curFrame, BlockMotionVectorPtr motionVectorQueueNode, double threshold)
  */
-void createNewFrame(IplImage ** newFrame, IplImage *refFrame, IplImage *curFrame, BlockMotionVectorPtr motionVectorQueueNode, double threshold){
+void createNewFrame(IplImage ** newFrame, IplImage *refFrame, IplImage *curFrame, BlockMotionVectorPtr motionVectorQueueNode, double threshold){	
 	
-	
-	
+	int motions[2];
+	adjustMotionBlock(motionVectorQueueNode, threshold, motions);
+
 	if(motionVectorQueueNode == NULL){
 		fprintf(stderr, "Error: Motion Vector Queue is empty\n");
 		exit(-1);
 	} else{
 		while(motionVectorQueueNode != NULL){
 			if(shiftedDistance(motionVectorQueueNode->shiftX, motionVectorQueueNode->shiftY) >= threshold){
-				fillMotionBlock(newFrame, curFrame, motionVectorQueueNode->x * (pow(2.0, PYRAMIDLEVEL)), motionVectorQueueNode->y * (pow(2.0, PYRAMIDLEVEL)), motionVectorQueueNode->shiftX * (pow(2.0, PYRAMIDLEVEL)), motionVectorQueueNode->shiftY * (pow(2.0, PYRAMIDLEVEL)));
+				//fillMotionBlock(newFrame, curFrame, motionVectorQueueNode->x * (pow(2.0, PYRAMIDLEVEL)), motionVectorQueueNode->y * (pow(2.0, PYRAMIDLEVEL)), motionVectorQueueNode->shiftX * (pow(2.0, PYRAMIDLEVEL)), motionVectorQueueNode->shiftY * (pow(2.0, PYRAMIDLEVEL)));
+				fillMotionBlock(newFrame, curFrame, motionVectorQueueNode->x * (pow(2.0, PYRAMIDLEVEL)), motionVectorQueueNode->y * (pow(2.0, PYRAMIDLEVEL)), (*motions) * (pow(2.0, PYRAMIDLEVEL)), (*(motions + 1)) * (pow(2.0, PYRAMIDLEVEL)));
 			} else{
 				fillBackGroundBlock(newFrame, refFrame, curFrame, motionVectorQueueNode->x * (pow(2.0, PYRAMIDLEVEL)), motionVectorQueueNode->y * (pow(2.0, PYRAMIDLEVEL)));
 			}
@@ -214,8 +216,36 @@ void fillBlankPixels(IplImage * sourceImage, IplImage * interFrame, IplImage ** 
 			}
 }
 
-void adjustMotionBlock(BlockMotionVectorPtr *motionVectorQueueNode){
+void adjustMotionBlock(BlockMotionVectorPtr motionVectorQueueNode, double distanceThreshold, int motions[]){
+	DistanceFrequencyNodePtr headDistanceFrequencyPtr = NULL;
+	DistanceFrequencyNodePtr tailDistanceFrequencyPtr = NULL;
 
+	BlockMotionVectorPtr headMotionVector = motionVectorQueueNode;
+
+	while(motionVectorQueueNode != NULL){
+		if(sqrt(square(motionVectorQueueNode->shiftX) + square(motionVectorQueueNode->shiftY)) >= distanceThreshold){
+			enqueueDistanceFrequency(&headDistanceFrequencyPtr, &tailDistanceFrequencyPtr, motionVectorQueueNode->shiftX, motionVectorQueueNode->shiftY);
+		}
+
+		motionVectorQueueNode = motionVectorQueueNode->nextPtr;
+	}
+
+	long largestFrequency = headDistanceFrequencyPtr->frequency;
+	int likelyMotionX = headDistanceFrequencyPtr->shiftX;
+	int likelyMotionY = headDistanceFrequencyPtr->shiftY;
+
+	while(headDistanceFrequencyPtr != NULL){
+		if(largestFrequency < headDistanceFrequencyPtr->frequency){
+			largestFrequency = headDistanceFrequencyPtr->frequency;
+			likelyMotionX = headDistanceFrequencyPtr->shiftX;
+			likelyMotionY = headDistanceFrequencyPtr->shiftY;
+		}
+
+		headDistanceFrequencyPtr =  headDistanceFrequencyPtr->nextPtr;
+	}
+
+	*motions = likelyMotionX;
+	*(motions + 1) = likelyMotionY;
 }
 
 /** 
