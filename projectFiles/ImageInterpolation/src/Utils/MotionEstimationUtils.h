@@ -57,7 +57,7 @@ void fillBlankPixels(IplImage * sourceImage, IplImage * interFrame, IplImage ** 
 /** Function void adjustMotionBlock(BlockMotionVectorPtr *motionVectorQueueNode)
  *		Find the point that needs interpolation and then create a new image
  */
-void adjustMotionBlock(BlockMotionVectorPtr *motionVectorQueueNode);
+void adjustMotionBlock(BlockMotionVectorPtr motionVectorQueueNode, double distanceThreshold, int motions[]);
 
 /** Function void interpolateInSequence(char * directory, vector<string>& fileNames, vector<string>& srcFileNames, double *thresholds, int quantity)
  *		Find the point that needs interpolation and then create a new image

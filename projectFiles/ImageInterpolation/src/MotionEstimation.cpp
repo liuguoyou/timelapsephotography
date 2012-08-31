@@ -62,6 +62,8 @@ int main(void){
 
 		*(thresholds + index)= computeDistanceThreshold(headMotionVectorPtr);
 
+		printf("threshold[%ld]: %f\n", index, *(thresholds + index));
+
 		index++;
 
 		//Release memories

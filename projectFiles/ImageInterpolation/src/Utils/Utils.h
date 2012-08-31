@@ -18,7 +18,7 @@ using namespace cv;
  *******************************************/
 #define BLOCKSIZE 8
 #define SEARCHRANGE 16
-#define PYRAMIDLEVEL 4
+#define PYRAMIDLEVEL 3
 #define INTERPOLATION_RANGE 0.8
 
 /*******************************************
