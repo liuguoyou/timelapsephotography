@@ -1,0 +1,1 @@
+The three directories provided are three different project files that are created in this project, developed in Microsoft Visual Studio 2010 with OpenCV, in Windows 7 Professional 32 bit (Virtual Machine).
